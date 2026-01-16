@@ -1,4 +1,6 @@
+from itertools import count
 from openai import OpenAI
+import json
 
 client_openai = OpenAI(
         base_url="http://127.0.0.1:1234/v1",
@@ -13,7 +15,7 @@ with open("Resenhas_App_ChatGPT.txt", "r", encoding="utf-8") as review:
 
 def classify_review(reviews):
    response = client_openai.chat.completions.create(
-    model = "google/gemma-3-1b",
+    model = "google/gemma-3-4b",
     messages=[
         {"role": "system", "content":"Você e um agente de IA que classifica as resenhas de aplicativos de qualquer loja"},
         {"role": "user", "content": f"""Vou lhe passar uma serie de resenhas sobre o ChatGPT, classificara como (positiva, negativa
@@ -37,7 +39,44 @@ def classify_review(reviews):
         '"""}
     ]
    )
-   json = response
-   print (json) 
+   return response.choices[0].message.content.strip().replace("```json", "").replace("```", "")
+   
 
-classify_review(revies_list)
+dict_classify = json.loads(classify_review(revies_list))
+
+def cout_classification(dict_classify):
+    list_positive = []
+    list_negative = []
+    list_neutral = []
+
+    for review in dict_classify:
+        if review["classificacao"] == "positiva":
+            list_positive.append(review["classificacao"])
+        elif review["classificacao"] == "negativa":
+                list_negative.append(review["classificacao"])               
+        else:
+            list_neutral.append(review["classificacao"])
+            return list_negative, list_neutral, list_positive
+
+
+list_positive, list_negative, list_neutral = cout_classification(dict_classify)
+
+dict_count = {
+    "positivas": len(list_positive),
+    "negativas": len(list_negative),
+    "neutras": len(list_neutral)
+}
+
+def join_reviews(dict_classify, separator="----"):
+    reviews_text = []
+    for review in dict_classify:
+        review_str = f"Usuário: {review['usuario']}\nResenha: {review['resenha_pt']}\n"
+        reviews_text.append(review_str)
+    
+    return separator.join(reviews_text)
+
+def join_and_return_all(dict_classify, separator="----"):
+    
+    return f"Classificacao: {dict_count},\n Resenhas: {join_reviews(dict_classify, separator)}"
+
+print(join_and_return_all(dict_classify))
